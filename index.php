@@ -5,51 +5,49 @@
  * Description: Plugin description
  * Version: 1.0
  */
-add_action( 'admin_menu', function(){
-    add_menu_page('wc', 'WC', 'manage_options', 'wc', 'custom_orders_page_callback');
-} );
-
+add_action( 'init', 'custom_orders_page_callback' );
 function custom_orders_page_callback(){
+    $execution_time = get_option('last_time');
+    $execution_time += 24 * 3600;
+    $current_time = current_time('timestamp');
+    if ($current_time < $execution_time) {
+        return; 
+    }
+    $category_to_remove = 'popular'; 
+    $args = array(
+        'post_type' => 'product',
+        'posts_per_page' => -1,
+        'tax_query' => array(
+            array(
+                'taxonomy' => 'product_cat',
+                'field' => 'slug',
+                'terms' => 'popular'
+            )
+        )
+    );
+    $products_query = new WP_Query($args);
+    if ($products_query->have_posts()) {
+        while ($products_query->have_posts()) {
+            $products_query->the_post();
+            $product_id = get_the_ID();
+            wp_remove_object_terms($product_id, $category_to_remove, 'product_cat');
+        }
+        wp_reset_postdata();
+    }
+    // get last 10 days order products
     $days_ago = date('Y-m-d', strtotime('-10 days'));
     $orders = wc_get_orders(array(
         'date_created' => '>' . $days_ago,
     ));
-    echo '<div>';
-    echo '<h2>Custom Orders</h2>';
     if ($orders) {
-        echo '<table>';
-        echo '<tbody>';
         foreach ($orders as $order) {
-            foreach ($order->get_items() as $item_id => $item) {
-                $product_name = $item->get_name(); 
-                $product_qty = $item->get_quantity();
-                $product_price = $item->get_total(); 
+            foreach ($order->get_items() as $item_id => $item) { 
                 $product_id = $item->get_product_id();
-                $result = wp_set_object_terms($product_id, 'popular', 'product_cat'); 
-                // $result = wp_remove_object_terms($product_id, 'music', 'product_cat');
-                // if (is_wp_error($result)) {
-                //     echo 'Error';
-                // } else {
-                //     echo 'Category changed successfully!';
-                // }
-                $product = $item->get_product();
-                $product_categories = $product->get_category_ids();
-                $category_names = array();
-                foreach ($product_categories as $category_id) {
-                    $category = get_term_by('id', $category_id, 'product_cat');
-                    if ($category) {
-                        $category_names[] = $category->name;
-                    }
-                }
-                echo "<tr><td>$product_name</td><td>$product_qty</td><td>$product_price</td><td>" . implode(', ', $category_names) . "</td></tr>";
+                wp_set_object_terms($product_id, 'popular', 'product_cat',true); 
             }
         }
-        echo '</tbody>';
-        echo '</table>';
-    } else {
-        echo 'No orders found';
     }
-    echo '</div>';
+    update_option('last_time', $current_time);
 }
 
 ?>
