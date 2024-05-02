@@ -7,11 +7,17 @@
  */
 add_action( 'init', 'custom_orders_page_callback' );
 function custom_orders_page_callback(){
-    $execution_time = get_option('last_time');
-    $execution_time += 24 * 3600;
-    $current_time = current_time('timestamp');
-    if ($current_time < $execution_time) {
-        return; 
+    $transient_data = get_transient('last_time');
+    // $execution_time = get_option('last_time');
+    // $execution_time += 24 * 3600;
+    // $current_time = current_time('timestamp');
+    // if ($current_time < $execution_time) {
+    //     return; 
+    // }
+    // delete_transient('last_time');
+    var_dump($transient_data);
+    if($transient_data !== false ){
+        return;
     }
     $category_to_remove = 'popular'; 
     $args = array(
@@ -47,7 +53,8 @@ function custom_orders_page_callback(){
             }
         }
     }
-    update_option('last_time', $current_time);
+    set_transient('last_time', array('time' => 'value'), 24 * 3600);
+    // update_option('last_time', $current_time);
 }
 
 ?>
